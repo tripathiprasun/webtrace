@@ -405,6 +405,7 @@ window.showToast = function(message, isError = false) {
     }, 2000);
 };
 
+// UPDATED: Complete JSON report with DNA, technologies, and security
 window.downloadReport = function() {
     if (!window.currentScanData) {
         showToast('No scan data available', true);
@@ -413,8 +414,13 @@ window.downloadReport = function() {
 
     const report = {
         generated_at: new Date().toISOString(),
+        webtrace_version: '1.0',
+
+        // Basic scan info
         target_url: window.currentScanData.target_url,
         final_url: window.currentScanData.final_url,
+
+        // Summary statistics
         summary: {
             total_requests: window.currentScanData.total_requests,
             unique_domains: window.currentScanData.unique_domains,
@@ -423,37 +429,84 @@ window.downloadReport = function() {
             total_size_bytes: window.currentScanData.total_size_bytes,
             scan_duration_ms: window.currentScanData.scan_duration_ms,
         },
+
+        // Website DNA (Phase 8)
+        dna: window.currentScanData.dna || null,
+
+        // Detected technologies (Phase 9)
+        technologies: window.currentScanData.technologies || [],
+
+        // Security analysis (Phase 10)
+        security: window.currentScanData.security || null,
+
+        // Domain information
         domains: window.currentScanData.domains,
+
+        // All resources/events
         resources: window.currentScanData.events,
+
+        // Resource type breakdown
+        resource_types: window.currentScanData.resource_types || {},
     };
 
     const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `webtrace-${new Date().getTime()}.json`;
+
+    // Use target domain in filename
+    const targetDomain = new URL(window.currentScanData.target_url).hostname;
+    a.download = `webtrace-${targetDomain}-${new Date().getTime()}.json`;
+
     a.click();
     URL.revokeObjectURL(url);
 
-    showToast('Report downloaded');
+    showToast('Complete report downloaded');
 };
 
+// UPDATED: Enhanced CSV export with more metadata
 window.downloadResourceList = function() {
     if (!window.currentScanData || !window.currentScanData.events) {
         showToast('No scan data available', true);
         return;
     }
 
-    const headers = ['Type', 'URL', 'Method', 'Status', 'Size (bytes)', 'Duration (ms)', 'Hostname'];
-    const rows = window.currentScanData.events.map(r => [
-        r.resource_type || 'other',
-        r.url,
-        r.method,
-        r.status || '',
-        r.size || 0,
-        r.duration || 0,
-        r.hostname || '',
-    ]);
+    // Build CSV with comprehensive data
+    const headers = [
+        'Type',
+        'URL',
+        'Hostname',
+        'Method',
+        'Status',
+        'Status Text',
+        'Size (bytes)',
+        'Duration (ms)',
+        'Content Type',
+        'Failed',
+        'Redirect',
+        'First Party'
+    ];
+
+    const targetHostname = new URL(window.currentScanData.target_url).hostname;
+
+    const rows = window.currentScanData.events.map(r => {
+        const isFirstParty = r.hostname === targetHostname || r.hostname.endsWith(`.${targetHostname}`);
+
+        return [
+            r.resource_type || 'other',
+            r.url,
+            r.hostname || '',
+            r.method,
+            r.status || '',
+            r.status_text || '',
+            r.size || 0,
+            r.duration || 0,
+            r.content_type || '',
+            r.failed ? 'Yes' : 'No',
+            r.is_redirect ? 'Yes' : 'No',
+            isFirstParty ? 'Yes' : 'No'
+        ];
+    });
 
     const csv = [
         headers.join(','),
@@ -464,11 +517,135 @@ window.downloadResourceList = function() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `webtrace-resources-${new Date().getTime()}.csv`;
+
+    const targetDomain = new URL(window.currentScanData.target_url).hostname;
+    a.download = `webtrace-resources-${targetDomain}-${new Date().getTime()}.csv`;
+
     a.click();
     URL.revokeObjectURL(url);
 
-    showToast('CSV downloaded');
+    showToast('CSV resource list downloaded');
+};
+
+// NEW: Summary text report
+window.downloadSummaryReport = function() {
+    if (!window.currentScanData) {
+        showToast('No scan data available', true);
+        return;
+    }
+
+    const data = window.currentScanData;
+    const dna = data.dna || {};
+    const tech = data.technologies || [];
+    const security = data.security || {};
+
+    // Generate human-readable text report
+    let report = `WEBTRACE SCAN REPORT
+${'='.repeat(80)}
+
+Target URL: ${data.target_url}
+Final URL: ${data.final_url}
+Scan Date: ${new Date().toISOString()}
+
+SUMMARY
+${'-'.repeat(80)}
+Total Requests: ${data.total_requests}
+Unique Domains: ${data.unique_domains} (${data.first_party_domains} first-party, ${data.third_party_domains} third-party)
+Total Size: ${formatBytes(data.total_size_bytes)}
+Duration: ${data.scan_duration_ms}ms
+
+`;
+
+    // DNA Section
+    if (dna.complexity) {
+        report += `WEBSITE DNA
+${'-'.repeat(80)}
+Complexity Score: ${dna.complexity.score}/100 (${dna.complexity.level})
+${dna.complexity.description}
+
+Domain Strategy: ${dna.domain_profile?.strategy || 'N/A'}
+Performance Rating: ${dna.performance_profile?.speed_rating || 'N/A'}
+Average Request Duration: ${dna.performance_profile?.avg_duration || 0}ms
+
+`;
+    }
+
+    // Technologies
+    if (tech.length > 0) {
+        report += `DETECTED TECHNOLOGIES (${tech.length})
+${'-'.repeat(80)}
+`;
+        const byCategory = {};
+        tech.forEach(t => {
+            const cat = t.category || 'Other';
+            if (!byCategory[cat]) byCategory[cat] = [];
+            byCategory[cat].push(t.name);
+        });
+
+        Object.entries(byCategory).forEach(([category, names]) => {
+            report += `${category}:\n`;
+            names.forEach(name => report += `  - ${name}\n`);
+        });
+        report += '\n';
+    }
+
+    // Security Headers
+    if (security.summary) {
+        report += `SECURITY HEADERS
+${'-'.repeat(80)}
+Present: ${security.summary.present}/${security.summary.total}
+Absent: ${security.summary.absent}
+
+`;
+        if (security.headers) {
+            Object.values(security.headers).forEach(h => {
+                report += `${h.name}: ${h.present ? 'PRESENT' : 'ABSENT'}\n`;
+                if (h.present && h.value) {
+                    report += `  Value: ${h.value}\n`;
+                }
+            });
+        }
+        report += '\n';
+    }
+
+    // Top domains
+    if (dna.most_contacted_domains && dna.most_contacted_domains.length > 0) {
+        report += `TOP DOMAINS
+${'-'.repeat(80)}
+`;
+        dna.most_contacted_domains.slice(0, 10).forEach(d => {
+            report += `${d.hostname} (${d.is_first_party ? '1st party' : '3rd party'}): ${d.requests} requests\n`;
+        });
+        report += '\n';
+    }
+
+    // Largest resources
+    if (dna.largest_resources && dna.largest_resources.length > 0) {
+        report += `LARGEST RESOURCES
+${'-'.repeat(80)}
+`;
+        dna.largest_resources.slice(0, 10).forEach(r => {
+            report += `${formatBytes(r.size)} - ${r.type} - ${r.url}\n`;
+        });
+    }
+
+    report += `\n${'='.repeat(80)}
+Generated by WebTrace
+Built by Prasun Tripathi
+`;
+
+    const blob = new Blob([report], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+
+    const targetDomain = new URL(data.target_url).hostname;
+    a.download = `webtrace-summary-${targetDomain}-${new Date().getTime()}.txt`;
+
+    a.click();
+    URL.revokeObjectURL(url);
+
+    showToast('Summary report downloaded');
 };
 
 function getResourceTypeColor(type) {

@@ -1,10 +1,13 @@
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 import json
 
 from .validators import URLValidationError, URLValidator
-from .executor import ScanExecutor
+from .scanner import PlaywrightScanner
+from .dna_analyzer import WebsiteDNA
+from .tech_detector import TechnologyDetector
+from .security_analyzer import SecurityHeaderAnalyzer
 
 
 def index(request):
@@ -50,10 +53,23 @@ def scan_url(request):
             }, status=400)
 
         # Execute scan immediately (blocking)
-        from .scanner import PlaywrightScanner
-
         scanner = PlaywrightScanner()
         results = scanner.scan(normalized_url)
+
+        # Generate DNA analysis
+        dna_analyzer = WebsiteDNA(results)
+        dna_profile = dna_analyzer.analyze()
+        results['dna'] = dna_profile
+
+        # Detect technologies
+        tech_detector = TechnologyDetector()
+        technologies = tech_detector.detect(results)
+        results['technologies'] = technologies
+
+        # Analyze security headers
+        security_analyzer = SecurityHeaderAnalyzer(results)
+        security_analysis = security_analyzer.analyze()
+        results['security'] = security_analysis
 
         return JsonResponse(results)
 

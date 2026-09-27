@@ -271,4 +271,5 @@ class PlaywrightScanner:
             'redirect_url': event.redirect_url,
             'failed': event.failed,
             'failure_text': event.failure_text,
+            'response_headers': event.response_headers,  # Add this
         }
