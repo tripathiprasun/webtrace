@@ -1,0 +1,48 @@
+from django.test import TestCase
+from unittest.mock import Mock, patch
+from .scanner import PlaywrightScanner, NetworkEvent
+
+
+class NetworkEventTests(TestCase):
+    """Test NetworkEvent class"""
+
+    def test_create_event(self):
+        """Can create a network event"""
+        event = NetworkEvent()
+        event.url = "https://example.com"
+        event.method = "GET"
+        event.status = 200
+
+        self.assertEqual(event.url, "https://example.com")
+        self.assertEqual(event.method, "GET")
+        self.assertEqual(event.status, 200)
+
+
+class PlaywrightScannerTests(TestCase):
+    """Test Playwright scanner"""
+
+    def test_scanner_initialization(self):
+        """Scanner initializes correctly"""
+        scanner = PlaywrightScanner()
+        self.assertEqual(len(scanner.events), 0)
+        self.assertEqual(scanner.page_url, "")
+
+    def test_serialize_event(self):
+        """Can serialize network event"""
+        scanner = PlaywrightScanner()
+        event = NetworkEvent()
+        event.url = "https://example.com/test.js"
+        event.method = "GET"
+        event.resource_type = "script"
+        event.status = 200
+        event.size = 1024
+
+        serialized = scanner._serialize_event(event)
+
+        self.assertEqual(serialized['url'], "https://example.com/test.js")
+        self.assertEqual(serialized['method'], "GET")
+        self.assertEqual(serialized['resource_type'], "script")
+        self.assertEqual(serialized['hostname'], "example.com")
+
+    # Note: Full integration tests would require network access
+    # or extensive mocking. For now, we test components.

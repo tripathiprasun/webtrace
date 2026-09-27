@@ -1,0 +1,350 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Scan Results - {{ scan.target_url }} - WebTrace{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6 max-w-7xl">
+    <!-- Header -->
+    <div class="mb-6">
+        <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center space-x-3">
+                <a href="{% url 'core:index' %}" class="text-gray-500 hover:text-gray-300 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                </a>
+                <h1 class="text-xl font-bold text-gray-100">Scan Results</h1>
+            </div>
+            <div class="text-xs text-gray-500">
+                ID: {{ scan.id }}
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-2 text-sm">
+            <span class="text-gray-500">Target:</span>
+            <code class="text-gray-300 bg-dark-surface px-2 py-1 rounded text-xs">{{ scan.target_url }}</code>
+            {% if scan.status == 'COMPLETED' %}
+                <span class="inline-flex items-center px-2 py-1 rounded text-xs bg-green-900/30 text-green-400 border border-green-800">
+                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                    </svg>
+                    COMPLETED
+                </span>
+            {% elif scan.status == 'RUNNING' %}
+                <span class="inline-flex items-center px-2 py-1 rounded text-xs bg-blue-900/30 text-blue-400 border border-blue-800">
+                    <svg class="animate-spin w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    RUNNING
+                </span>
+            {% elif scan.status == 'FAILED' %}
+                <span class="inline-flex items-center px-2 py-1 rounded text-xs bg-red-900/30 text-red-400 border border-red-800">
+                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+                    </svg>
+                    FAILED
+                </span>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if scan.status == 'RUNNING' %}
+        <!-- Loading State -->
+        <div class="bg-dark-surface border border-dark-border rounded p-8 text-center">
+            <svg class="animate-spin h-8 w-8 mx-auto mb-4 text-blue-500" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p class="text-gray-400">Scan in progress...</p>
+            <p class="text-xs text-gray-600 mt-2">This page will auto-refresh when complete</p>
+        </div>
+        <script>
+            setTimeout(() => location.reload(), 2000);
+        </script>
+
+    {% elif scan.status == 'FAILED' %}
+        <!-- Error State -->
+        <div class="bg-dark-surface border border-red-900 rounded p-6">
+            <div class="flex items-start space-x-3">
+                <svg class="w-6 h-6 text-red-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+                </svg>
+                <div class="flex-1">
+                    <h3 class="text-sm font-semibold text-red-400 mb-1">Scan Failed</h3>
+                    <p class="text-sm text-gray-400">{{ scan.error_message }}</p>
+                </div>
+            </div>
+        </div>
+
+    {% elif scan.status == 'COMPLETED' %}
+        <!-- Results -->
+        <div class="space-y-6">
+            <!-- Overview -->
+            <section>
+                <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Overview</h2>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="bg-dark-surface border border-dark-border rounded p-4">
+                        <div class="text-2xl font-bold text-gray-100">{{ scan.total_requests }}</div>
+                        <div class="text-xs text-gray-500 mt-1">Total Requests</div>
+                    </div>
+                    <div class="bg-dark-surface border border-dark-border rounded p-4">
+                        <div class="text-2xl font-bold text-gray-100">{{ scan.unique_domains }}</div>
+                        <div class="text-xs text-gray-500 mt-1">Unique Domains</div>
+                        <div class="text-xs text-gray-600 mt-1">
+                            {{ scan.first_party_domains }} 1st / {{ scan.third_party_domains }} 3rd
+                        </div>
+                    </div>
+                    <div class="bg-dark-surface border border-dark-border rounded p-4">
+                        <div class="text-2xl font-bold text-gray-100">{{ scan.total_size_bytes|filesizeformat }}</div>
+                        <div class="text-xs text-gray-500 mt-1">Total Transferred</div>
+                    </div>
+                    <div class="bg-dark-surface border border-dark-border rounded p-4">
+                        <div class="text-2xl font-bold text-gray-100">{{ scan.duration_ms|floatformat:0 }}ms</div>
+                        <div class="text-xs text-gray-500 mt-1">Scan Duration</div>
+                    </div>
+                </div>
+
+                <!-- Resource Breakdown -->
+                <div class="mt-4 bg-dark-surface border border-dark-border rounded p-4">
+                    <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Resource Types</h3>
+                    <div class="grid grid-cols-2 md:grid-cols-5 gap-3 text-xs">
+                        {% if scan.document_count > 0 %}
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Documents:</span>
+                            <span class="text-gray-300 font-mono">{{ scan.document_count }}</span>
+                        </div>
+                        {% endif %}
+                        {% if scan.script_count > 0 %}
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Scripts:</span>
+                            <span class="text-gray-300 font-mono">{{ scan.script_count }}</span>
+                        </div>
+                        {% endif %}
+                        {% if scan.stylesheet_count > 0 %}
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Stylesheets:</span>
+                            <span class="text-gray-300 font-mono">{{ scan.stylesheet_count }}</span>
+                        </div>
+                        {% endif %}
+                        {% if scan.image_count > 0 %}
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Images:</span>
+                            <span class="text-gray-300 font-mono">{{ scan.image_count }}</span>
+                        </div>
+                        {% endif %}
+                        {% if scan.font_count > 0 %}
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Fonts:</span>
+                            <span class="text-gray-300 font-mono">{{ scan.font_count }}</span>
+                        </div>
+                        {% endif %}
+                        {% if scan.xhr_count > 0 or scan.fetch_count > 0 %}
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">XHR/Fetch:</span>
+                            <span class="text-gray-300 font-mono">{{ scan.xhr_count|add:scan.fetch_count }}</span>
+                        </div>
+                        {% endif %}
+                        {% if scan.media_count > 0 %}
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Media:</span>
+                            <span class="text-gray-300 font-mono">{{ scan.media_count }}</span>
+                        </div>
+                        {% endif %}
+                        {% if scan.other_count > 0 %}
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Other:</span>
+                            <span class="text-gray-300 font-mono">{{ scan.other_count }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </section>
+
+            <!-- Network Waterfall -->
+            <section id="waterfall-section">
+                <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Network Waterfall</h2>
+                <div class="bg-dark-surface border border-dark-border rounded overflow-hidden">
+                    <div id="waterfall-container" class="p-4">
+                        <!-- Waterfall will be rendered here by JavaScript -->
+                        <div class="text-center text-gray-500 py-8">Loading waterfall...</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Domains Table -->
+            <section id="domains-section">
+                <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Domains</h2>
+                <div class="bg-dark-surface border border-dark-border rounded overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-xs" id="domains-table">
+                            <thead>
+                                <tr class="border-b border-dark-border bg-dark-bg">
+                                    <th class="text-left py-3 px-4 font-semibold text-gray-400 uppercase tracking-wider">Domain</th>
+                                    <th class="text-left py-3 px-4 font-semibold text-gray-400 uppercase tracking-wider">Party</th>
+                                    <th class="text-right py-3 px-4 font-semibold text-gray-400 uppercase tracking-wider">Requests</th>
+                                    <th class="text-right py-3 px-4 font-semibold text-gray-400 uppercase tracking-wider">Size</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-dark-border">
+                                <!-- Populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Resources Table -->
+            <section id="resources-section">
+                <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Resources</h2>
+                <div class="bg-dark-surface border border-dark-border rounded overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-xs" id="resources-table">
+                            <thead>
+                                <tr class="border-b border-dark-border bg-dark-bg">
+                                    <th class="text-left py-3 px-4 font-semibold text-gray-400 uppercase tracking-wider w-16">Type</th>
+                                    <th class="text-left py-3 px-4 font-semibold text-gray-400 uppercase tracking-wider">URL</th>
+                                    <th class="text-center py-3 px-4 font-semibold text-gray-400 uppercase tracking-wider w-20">Status</th>
+                                    <th class="text-right py-3 px-4 font-semibold text-gray-400 uppercase tracking-wider w-24">Size</th>
+                                    <th class="text-right py-3 px-4 font-semibold text-gray-400 uppercase tracking-wider w-24">Duration</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-dark-border">
+                                <!-- Populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if scan.status == 'COMPLETED' %}
+<script src="{% static 'core/js/waterfall.js' %}"></script>
+<script>
+    // Load scan data
+    const scanId = {{ scan.id }};
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        try {
+            const response = await fetch(`/api/scans/${scanId}/`);
+            const data = await response.json();
+
+            // Render waterfall
+            if (data.resources && data.resources.length > 0) {
+                new NetworkWaterfall('waterfall-container', data.resources);
+            }
+            
+            // Populate domains table
+            populateDomainsTable(data.domains);
+            
+            // Populate resources table
+            populateResourcesTable(data.resources);
+            
+        } catch (error) {
+            console.error('Error loading scan data:', error);
+        }
+    });
+    
+    function populateDomainsTable(domains) {
+        const tbody = document.querySelector('#domains-table tbody');
+        
+        if (!domains || domains.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="py-4 px-4 text-center text-gray-500">No domains found</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = domains.map(domain => `
+            <tr class="hover:bg-dark-hover transition-colors">
+                <td class="py-3 px-4">
+                    <code class="text-gray-300">${escapeHtml(domain.hostname)}</code>
+                </td>
+                <td class="py-3 px-4">
+                    ${domain.is_first_party 
+                        ? '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs bg-blue-900/30 text-blue-400 border border-blue-800">1st party</span>'
+                        : '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs bg-orange-900/30 text-orange-400 border border-orange-800">3rd party</span>'
+                    }
+                </td>
+                <td class="py-3 px-4 text-right font-mono text-gray-300">${domain.request_count}</td>
+                <td class="py-3 px-4 text-right font-mono text-gray-300">${formatBytes(domain.total_size_bytes)}</td>
+            </tr>
+        `).join('');
+    }
+    
+    function populateResourcesTable(resources) {
+        const tbody = document.querySelector('#resources-table tbody');
+        
+        if (!resources || resources.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="py-4 px-4 text-center text-gray-500">No resources found</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = resources.map(resource => `
+            <tr class="hover:bg-dark-hover transition-colors">
+                <td class="py-3 px-4">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs ${getResourceTypeColor(resource.resource_type)}">
+                        ${resource.resource_type}
+                    </span>
+                </td>
+                <td class="py-3 px-4">
+                    <div class="flex items-center space-x-2">
+                        <code class="text-gray-400 text-xs">${resource.method}</code>
+                        <code class="text-gray-300 truncate max-w-xl" title="${escapeHtml(resource.url)}">${escapeHtml(resource.url)}</code>
+                    </div>
+                </td>
+                <td class="py-3 px-4 text-center">
+                    ${resource.failed 
+                        ? '<span class="text-red-400">FAILED</span>'
+                        : `<span class="${getStatusColor(resource.status)}">${resource.status || '-'}</span>`
+                    }
+                </td>
+                <td class="py-3 px-4 text-right font-mono text-gray-300">${formatBytes(resource.size_bytes)}</td>
+                <td class="py-3 px-4 text-right font-mono text-gray-300">${resource.duration_ms}ms</td>
+            </tr>
+        `).join('');
+    }
+    
+    function getResourceTypeColor(type) {
+        const colors = {
+            'document': 'bg-purple-900/30 text-purple-400 border border-purple-800',
+            'script': 'bg-yellow-900/30 text-yellow-400 border border-yellow-800',
+            'stylesheet': 'bg-blue-900/30 text-blue-400 border border-blue-800',
+            'image': 'bg-green-900/30 text-green-400 border border-green-800',
+            'font': 'bg-pink-900/30 text-pink-400 border border-pink-800',
+            'xhr': 'bg-cyan-900/30 text-cyan-400 border border-cyan-800',
+            'fetch': 'bg-cyan-900/30 text-cyan-400 border border-cyan-800',
+            'media': 'bg-red-900/30 text-red-400 border border-red-800',
+            'other': 'bg-gray-800/30 text-gray-400 border border-gray-700',
+        };
+        return colors[type] || colors['other'];
+    }
+    
+    function getStatusColor(status) {
+        if (!status) return 'text-gray-500';
+        if (status >= 200 && status < 300) return 'text-green-400';
+        if (status >= 300 && status < 400) return 'text-blue-400';
+        if (status >= 400 && status < 500) return 'text-orange-400';
+        if (status >= 500) return 'text-red-400';
+        return 'text-gray-400';
+    }
+    
+    function formatBytes(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return Math.round(bytes / Math.pow(k, i) * 10) / 10 + ' ' + sizes[i];
+    }
+    
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+</script>
+{% endif %}
+{% endblock %}

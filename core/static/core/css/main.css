@@ -1,0 +1,41 @@
+/* Custom styles for WebTrace */
+
+/* Scrollbar styling for dark mode */
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: #0a0a0a;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #282828;
+    border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #383838;
+}
+
+/* Input autofill override for dark mode */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+    -webkit-text-fill-color: #f3f4f6;
+    -webkit-box-shadow: 0 0 0px 1000px #0a0a0a inset;
+    transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Focus visible for accessibility */
+*:focus-visible {
+    outline: 2px solid #10b981;
+    outline-offset: 2px;
+}
+
+/* Monospace refinements */
+.font-mono {
+    font-feature-settings: "liga" 0;
+    letter-spacing: -0.01em;
+}

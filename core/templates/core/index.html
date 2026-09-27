@@ -1,0 +1,209 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-12 max-w-7xl">
+    <div class="space-y-8">
+        <!-- Title Section -->
+        <div class="space-y-2">
+            <h1 class="text-2xl font-bold tracking-tight text-gray-100">
+                Website Behavior Analysis
+            </h1>
+            <p class="text-sm text-gray-500">
+                Enter a URL to observe network activity, resource loading, and page behavior in a controlled Chromium environment.
+            </p>
+        </div>
+
+        <!-- Scan Input -->
+        <div class="bg-dark-surface border border-dark-border rounded">
+            <div class="p-4 border-b border-dark-border">
+                <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    Target URL
+                </h2>
+            </div>
+            <div class="p-4">
+                <form id="scan-form" class="space-y-4">
+                    {% csrf_token %}
+                    <div>
+                        <input
+                            type="text"
+                            id="url-input"
+                            name="url"
+                            placeholder="https://example.com"
+                            class="w-full bg-dark-bg border border-dark-border rounded px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 font-mono"
+                            autocomplete="off"
+                            spellcheck="false"
+                        >
+                        <div id="url-error" class="hidden mt-2 text-xs text-red-400"></div>
+                    </div>
+
+                    <div class="flex items-center justify-between pt-2">
+                        <div class="text-xs text-gray-600">
+                            Supported: HTTPS URLs only • Results not stored
+                        </div>
+                        <button
+                            type="submit"
+                            id="scan-button"
+                            class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-dark-bg"
+                        >
+                            <span class="flex items-center space-x-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                </svg>
+                                <span>Start Scan</span>
+                            </span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Results Container (Hidden by default) -->
+        <div id="results-container" class="hidden space-y-6">
+            <!-- Overview -->
+            <section>
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Overview</h2>
+                    <div class="flex space-x-2">
+                        <button onclick="downloadResourceList()" class="px-3 py-1.5 bg-dark-surface border border-dark-border hover:border-gray-600 rounded text-xs text-gray-300 transition-colors">
+                            <span class="flex items-center space-x-1.5">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                                <span>CSV</span>
+                            </span>
+                        </button>
+                        <button onclick="downloadReport()" class="px-3 py-1.5 bg-dark-surface border border-dark-border hover:border-gray-600 rounded text-xs text-gray-300 transition-colors">
+                            <span class="flex items-center space-x-1.5">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                                <span>JSON Report</span>
+                            </span>
+                        </button>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="bg-dark-surface border border-dark-border rounded p-4">
+                        <div id="stat-requests" class="text-2xl font-bold text-gray-100">0</div>
+                        <div class="text-xs text-gray-500 mt-1">Total Requests</div>
+                    </div>
+                    <div class="bg-dark-surface border border-dark-border rounded p-4">
+                        <div id="stat-domains" class="text-2xl font-bold text-gray-100">0</div>
+                        <div class="text-xs text-gray-500 mt-1">Unique Domains</div>
+                        <div id="stat-domains-detail" class="text-xs text-gray-600 mt-1">0 1st / 0 3rd</div>
+                    </div>
+                    <div class="bg-dark-surface border border-dark-border rounded p-4">
+                        <div id="stat-size" class="text-2xl font-bold text-gray-100">0 B</div>
+                        <div class="text-xs text-gray-500 mt-1">Total Transferred</div>
+                    </div>
+                    <div class="bg-dark-surface border border-dark-border rounded p-4">
+                        <div id="stat-duration" class="text-2xl font-bold text-gray-100">0ms</div>
+                        <div class="text-xs text-gray-500 mt-1">Scan Duration</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Network Waterfall -->
+            <section>
+                <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Network Waterfall</h2>
+                <div class="bg-dark-surface border border-dark-border rounded overflow-hidden">
+                    <div id="waterfall-container" class="p-4">
+                        <div class="text-center text-gray-500 py-8">No data</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Domains Table -->
+            <section>
+                <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Domains</h2>
+                <div class="bg-dark-surface border border-dark-border rounded overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-xs" id="domains-table">
+                            <thead>
+                                <tr class="border-b border-dark-border bg-dark-bg">
+                                    <th class="text-left py-3 px-4 font-semibold text-gray-400 uppercase tracking-wider">Domain</th>
+                                    <th class="text-left py-3 px-4 font-semibold text-gray-400 uppercase tracking-wider">Party</th>
+                                    <th class="text-right py-3 px-4 font-semibold text-gray-400 uppercase tracking-wider">Requests</th>
+                                    <th class="text-right py-3 px-4 font-semibold text-gray-400 uppercase tracking-wider">Size</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-dark-border"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Resources Table -->
+<section>
+    <div class="flex items-center justify-between mb-3">
+        <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Resources</h2>
+
+        <!-- Filter Buttons -->
+        <div class="flex flex-wrap gap-1.5">
+            <button onclick="filterByType('all')" data-filter="all" class="filter-btn px-2 py-1 bg-green-600 text-white border border-green-600 rounded text-xs transition-colors">
+                All <span class="filter-count ml-1">0</span>
+            </button>
+            <button onclick="filterByType('document')" data-filter="document" class="filter-btn px-2 py-1 bg-dark-surface text-gray-400 border border-dark-border hover:border-gray-600 rounded text-xs transition-colors">
+                Doc <span class="filter-count ml-1">0</span>
+            </button>
+            <button onclick="filterByType('script')" data-filter="script" class="filter-btn px-2 py-1 bg-dark-surface text-gray-400 border border-dark-border hover:border-gray-600 rounded text-xs transition-colors">
+                JS <span class="filter-count ml-1">0</span>
+            </button>
+            <button onclick="filterByType('stylesheet')" data-filter="stylesheet" class="filter-btn px-2 py-1 bg-dark-surface text-gray-400 border border-dark-border hover:border-gray-600 rounded text-xs transition-colors">
+                CSS <span class="filter-count ml-1">0</span>
+            </button>
+            <button onclick="filterByType('image')" data-filter="image" class="filter-btn px-2 py-1 bg-dark-surface text-gray-400 border border-dark-border hover:border-gray-600 rounded text-xs transition-colors">
+                IMG <span class="filter-count ml-1">0</span>
+            </button>
+            <button onclick="filterByType('font')" data-filter="font" class="filter-btn px-2 py-1 bg-dark-surface text-gray-400 border border-dark-border hover:border-gray-600 rounded text-xs transition-colors">
+                Font <span class="filter-count ml-1">0</span>
+            </button>
+            <button onclick="filterByType('xhr')" data-filter="xhr" class="filter-btn px-2 py-1 bg-dark-surface text-gray-400 border border-dark-border hover:border-gray-600 rounded text-xs transition-colors">
+                XHR <span class="filter-count ml-1">0</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="bg-dark-surface border border-dark-border rounded overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-xs" id="resources-table">
+                <thead>
+                    <tr class="border-b border-dark-border bg-dark-bg">
+                        <th onclick="sortBy('type')" class="text-left py-3 px-4 font-semibold text-gray-400 uppercase tracking-wider w-16 cursor-pointer hover:text-gray-300">
+                            Type ↕
+                        </th>
+                        <th class="text-left py-3 px-4 font-semibold text-gray-400 uppercase tracking-wider">URL</th>
+                        <th onclick="sortBy('status')" class="text-center py-3 px-4 font-semibold text-gray-400 uppercase tracking-wider w-20 cursor-pointer hover:text-gray-300">
+                            Status ↕
+                        </th>
+                        <th onclick="sortBy('size')" class="text-right py-3 px-4 font-semibold text-gray-400 uppercase tracking-wider w-24 cursor-pointer hover:text-gray-300">
+                            Size ↕
+                        </th>
+                        <th onclick="sortBy('duration')" class="text-right py-3 px-4 font-semibold text-gray-400 uppercase tracking-wider w-24 cursor-pointer hover:text-gray-300">
+                            Duration ↕
+                        </th>
+                        <th class="text-center py-3 px-4 font-semibold text-gray-400 uppercase tracking-wider w-24">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-dark-border"></tbody>
+            </table>
+        </div>
+    </div>
+</section>
+        </div>
+    </div>
+</div>
+
+<!-- Resource Detail Modal -->
+<div id="resource-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-dark-surface border border-dark-border rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div id="resource-modal-content" class="p-6">
+            <!-- Content populated by JavaScript -->
+        </div>
+    </div>
+</div>
+
+<script src="{% static 'core/js/waterfall.js' %}"></script>
+<script src="{% static 'core/js/results.js' %}"></script>
+{% endblock %}
